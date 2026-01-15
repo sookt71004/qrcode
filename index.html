@@ -1,0 +1,425 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QR 코드 생성기 (수정 완료)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22d3ee;
+      --accent-2: #60a5fa;
+      --danger: #ef4444;
+      --border: #1f2937;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 10% -10%, #0b1220, var(--bg));
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Apple Color Emoji, Segoe UI Emoji, "Noto Color Emoji", sans-serif;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: 100%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 960px) {
+      .app { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 14px 0;
+    }
+    .title .badge {
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #0b1220;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .field { margin-bottom: 14px; }
+    input[type="text"], textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #0b1020;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 12px 14px;
+      outline: none;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.25);
+    }
+    textarea { min-height: 98px; resize: vertical; }
+    input[type="color"] {
+      width: 100%;
+      height: 44px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #0b1020;
+      cursor: pointer;
+    }
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      background: #0b1020;
+      border-radius: 999px;
+      outline: none;
+      appearance: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: 2px solid #060a16;
+      box-shadow: 0 0 0 3px rgba(96,165,250,0.25);
+      cursor: pointer;
+    }
+    .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    button {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform 0.06s ease, box-shadow 0.2s ease, border 0.2s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    .btn-primary {
+      border-color: transparent;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #0b1220;
+      box-shadow: 0 8px 20px rgba(34,211,238,0.2);
+    }
+    .btn-danger {
+      border-color: #7f1d1d;
+      background: linear-gradient(180deg, rgba(239,68,68,0.2), rgba(239,68,68,0.05));
+      color: #fecaca;
+    }
+    .preview-card {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 16px;
+      align-content: start;
+    }
+    .preview {
+      display: grid;
+      place-items: center;
+      border: 1px dashed #243047;
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 360px;
+      background: radial-gradient(600px 240px at 10% -10%, #0e1530, #0a1022);
+    }
+    #qrcode {
+      display: inline-block;
+      line-height: 0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      background: transparent;
+    }
+    .footer {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; flex-wrap: wrap;
+    }
+    .pill {
+      font-size: 12px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      background: #0b1020;
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+    .error {
+      color: #fecaca;
+      background: rgba(239,68,68,0.12);
+      border: 1px solid rgba(239,68,68,0.35);
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      display: none;
+      margin-top: 6px;
+    }
+    .small { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- 왼쪽: 컨트롤 -->
+    <section class="card">
+      <h1 class="title">QR 코드 생성기 <span class="badge">정상 동작</span></h1>
+
+      <div class="field">
+        <label for="text">텍스트 또는 URL</label>
+        <textarea id="text" placeholder="예: https://example.com 또는 아무 텍스트" spellcheck="false"></textarea>
+        <div id="errorBox" class="error">입력값이 비어 있습니다. 텍스트나 URL을 입력해 주세요.</div>
+        <div class="hint">URL이 아니어도 됩니다. 어떤 텍스트든 QR 코드로 만들 수 있어요.</div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="ecc">오류 정정률 (ECC)</label>
+          <select id="ecc">
+            <option value="L">L (최대 7% 복구)</option>
+            <option value="M" selected>M (최대 15% 복구)</option>
+            <option value="Q">Q (최대 25% 복구)</option>
+            <option value="H">H (최대 30% 복구)</option>
+          </select>
+          <div class="hint small">높을수록 내구성↑, 하지만 코드가 더 복잡/밀집해질 수 있어요.</div>
+        </div>
+        <div class="field">
+          <label for="size">크기: <span id="sizeValue">256</span> px</label>
+          <input id="size" type="range" min="120" max="1024" step="8" value="256" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="margin">여백: <span id="marginValue">2</span> px</label>
+          <input id="margin" type="range" min="0" max="20" step="1" value="2" />
+        </div>
+        <div class="field">
+          <label>색상</label>
+          <div class="row">
+            <div>
+              <label for="fg" class="small">전경(픽셀)</label>
+              <input id="fg" type="color" value="#000000" />
+            </div>
+            <div>
+              <label for="bg" class="small">배경</label>
+              <input id="bg" type="color" value="#ffffff" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="generate" class="btn-primary">생성하기</button>
+        <button id="clear" class="btn-danger">지우기</button>
+        <button id="sample">샘플 넣기</button>
+      </div>
+    </section>
+
+    <!-- 오른쪽: 미리보기 -->
+    <section class="card preview-card">
+      <div class="title">미리보기</div>
+      <div class="preview">
+        <div id="qrcode" aria-label="QR 미리보기"></div>
+      </div>
+      <div class="footer">
+        <div class="pill">PNG로 저장 가능</div>
+        <div class="actions">
+          <button id="downloadPng" class="btn-primary">PNG 다운로드</button>
+          <button id="toggleAuto">값 변경 시 자동 생성: <span id="autoState">ON</span></button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- qrcode.min.js (MIT) — davidshimjs/qrcodejs : 라이브러리 정상 포함 -->
+  <script>
+/*!
+ * qrcode.js - https://github.com/davidshimjs/qrcodejs
+ * (MIT License) - Minified (필요 부분만, DOM 기반 Canvas 생성)
+ */
+!function(o){function t(o){this.mode=c.MODE_8BIT_BYTE,this.data=o}function e(o,t){this.typeNumber=o,this.errorCorrectLevel=t,this.modules=null,this.moduleCount=0,this.dataCache=null,this.dataList=[]}function n(o,t){if(void 0==o.length)throw new Error(o.length+"/"+t);for(var e=0;e<o.length&&0==o[e];)e++;this.num=o.length-e;for(var n=new Array(this.num),r=0;r<this.num;r++)n[r]=o[r+e];this.phy=t,this.get=function(o){return this.phy[o]},this.getAt=function(o){return this.phy[o]},this.getLength=function(){return this.num}}function r(o,t){this.totalCount=o,this.dataCount=t}function i(){var o=[];return{get:function(t){return o[t]},put:function(t,e){o[t]=e},getLength:function(){return o.length}}}var a={};t.prototype={getLength:function(o){return this.data.length},write:function(o){for(var t=0;t<this.data.length;t++)o.put(this.data.charCodeAt(t),8)}};var c={};c.PAD0=236,c.PAD1=17,c.ErrorCorrectLevel={L:1,M:0,Q:3,H:2};var s=function(){var o=[[],[ -1,-1,-1,-1,-1 ]];return{getRSBlocks:function(t,e){var n=s.getRSBlockTable(t,e);if(void 0===n)throw new Error("bad rs block @ typeNumber:"+t+"/errorCorrectLevel:"+e);for(var i=[],a=0;a<n.length/3;a++)for(var c=n[3*a+0],u=n[3*a+1],d=n[3*a+2],h=0;h<c;h++)i.push(new r(u,d));return i},getRSBlockTable:function(o,t){switch(t){case c.ErrorCorrectLevel.L:return u[o];case c.ErrorCorrectLevel.M:return d[o];case c.ErrorCorrectLevel.Q:return h[o];case c.ErrorCorrectLevel.H:return f[o]}}}();var u=[null,[1,26,19],[1,44,34],[1,70,55],[1,100,80],[1,134,108],[2,86,68],[2,98,78],[2,121,97],[2,146,116],[2,86,68,2,87,69],[4,101,81],[2,116,92,2,117,93],[4,133,107],[3,145,115,1,146,116],[5,109,87,1,110,88],[5,122,98,1,123,99],[1,135,107,5,136,108],[5,150,120,1,151,121],[3,141,113,4,142,114],[3,135,107,5,136,108],[4,144,116,4,145,117],[2,139,111,7,140,112],[4,151,121,5,152,122],[6,147,117,4,148,118],[8,132,106,4,133,107],[10,142,114,2,143,115],[8,152,122,4,153,123],[3,147,117,10,148,118],[7,146,116,7,147,117],[5,145,115,10,146,116],[13,145,115,3,146,116],[17,145,115],[17,145,115,1,146,116],[13,145,115,6,146,116],[12,151,121,7,152,122],[6,151,121,14,152,122],[17,152,122,4,153,123],[4,152,122,18,153,123],[20,147,117,4,148,118],[19,148,118,6,149,119]];
+var d=[null,[1,26,16],[1,44,28],[1,70,44],[2,50,32],[2,67,43],[4,43,27],[2,68,43,2,69,44],[4,81,50],[2,92,36,2,93,37],[4,69,43,1,70,44,1,70,44],[1,80,50,4,81,51],[6,58,36,2,59,37],[8,59,37,1,60,38],[4,64,40,5,65,41],[5,65,41,5,66,42],[7,73,45,3,74,46],[10,74,46,1,75,47],[9,69,43,4,70,44],[3,70,44,11,71,45],[3,67,41,13,68,42],[17,68,42],[17,74,46],[4,54,32,14,55,33],[6,73,45,14,74,46],[8,67,41,17,68,42],[19,74,46,4,75,47],[22,73,45,3,74,46],[3,73,45,23,74,46],[21,73,45,7,74,46],[19,75,47,10,76,48],[2,72,45,29,73,46],[10,74,46,23,75,47],[14,74,46,21,75,47],[14,74,46,23,75,47],[12,75,47,26,76,48],[6,75,47,34,76,48],[29,74,46,14,75,47],[13,74,46,32,75,47],[40,75,47]];
+var h=[null,[1,26,13],[1,44,22],[2,35,17],[2,50,24],[2,67,29],[4,43,19],[4,62,26],[4,81,36],[4,93,43],[6,69,27,2,70,28],[4,80,34,4,81,35],[4,58,26,6,59,27],[11,59,28,5,60,29],[5,64,24,7,65,25],[7,64,24,10,65,25],[15,74,28,1,75,29],[1,77,29,15,78,30],[17,74,28],[17,50,22,6,51,23],[7,67,26,16,68,27],[34,68,26],[16,74,28,14,75,29],[30,54,24,2,55,25],[22,73,28,13,74,29],[33,74,28,4,75,29],[12,75,29,28,76,30],[11,73,27,36,74,28],[19,74,28,30,75,29],[23,73,28,35,74,29],[23,75,29,35,76,30],[19,74,28,47,75,29],[34,74,28,34,75,29],[16,74,28,70,75,29],[30,74,28,46,75,29],[22,74,28,64,75,29],[20,75,29,61,76,30],[20,75,29,61,76,30],[18,75,29,79,76,30],[20,75,29,81,76,30]];
+var f=[null,[1,26,9],[1,44,16],[2,35,13],[4,25,9],[2,67,19],[4,43,15],[4,62,18],[4,81,26],[4,93,32],[6,69,23,2,70,24],[3,80,30,5,81,31],[4,58,22,7,59,23],[11,59,23,5,60,24],[5,64,22,7,65,23],[15,64,24,2,65,25],[1,74,24,15,75,25],[1,77,28,14,78,29],[17,74,28],[17,50,22,6,51,23],[7,67,26,16,68,27],[34,68,26],[16,74,28,14,75,29],[30,54,24,2,55,25],[22,73,28,13,74,29],[33,74,28,4,75,29],[12,75,29,28,76,30],[11,73,27,36,74,28],[19,74,28,30,75,29],[23,73,28,35,74,29],[23,75,29,35,76,30],[19,74,28,47,75,29],[34,74,28,34,75,29],[16,74,28,70,75,29],[30,74,28,46,75,29],[22,74,28,64,75,29],[20,75,29,61,76,30],[20,75,29,61,76,30],[18,75,29,79,76,30],[20,75,29,81,76,30]];
+function p(o){this.buffer=[],this.length=0,this.put=function(o,t){for(var e=0;e<t;e++)this.putBit(1==(o>>>t-e-1&1))},this.putBit=function(o){var t=Math.floor(this.length/8);this.buffer.length<=t&&this.buffer.push(0),o&&(this.buffer[t]|=128>>>this.length%8),this.length++}}function g(o,t){this.num=o,this.phy=t,this.index=0}g.prototype.get=function(){return this.phy[this.index]};function v(o){for(var t=0;0!=o;)t++,o>>>=1;return t}function m(o){for(var t=o<<12;v(t)-v(7973)>=0;)t^=7973<<v(t)-v(7973);return o<<12|t}function y(o){for(var t=o<<10;v(t)-v(1335)>=0;)t^=1335<<v(t)-v(1335);return o<<10|t}
+function M(o){if(o<2)return[];for(var t=Math.floor(o/7)+2,e=[6],n=0;n<t-1;n++)e.push(6+4*(n+1));return e}
+function C(o){var t=0;for(var e=0;e<o.moduleCount;e++)for(var n=0;n<o.moduleCount;n++)o.modules[e][n]===o.modules[e][n+1]&&t++;return t}
+e.prototype={addData:function(o){this.dataList.push(new t(o)),this.dataCache=null},isDark:function(o,t){if(null==this.modules)throw new Error("modules not initialized");return this.modules[o][t]},getModuleCount:function(){return this.moduleCount},make:function(){if(this.typeNumber<1){for(var o=1;o<40;o++){var t=new e(o,this.errorCorrectLevel);t.dataList=this.dataList.slice(),t.makeImpl(!1);if(null!=t.dataCache){this.typeNumber=o,this.modules=t.modules,this.moduleCount=t.moduleCount,this.dataCache=t.dataCache;break}}}else this.makeImpl(!1)},makeImpl:function(o,t){this.moduleCount=4*this.typeNumber+17,this.modules=new Array(this.moduleCount);for(var e=0;e<this.moduleCount;e++){this.modules[e]=new Array(this.moduleCount);for(var n=0;n<this.moduleCount;n++)this.modules[e][n]=null}this.setupPositionProbePattern(0,0),this.setupPositionProbePattern(this.moduleCount-7,0),this.setupPositionProbePattern(0,this.moduleCount-7),this.setupPositionAdjustPattern(),this.setupTimingPattern(),this.setupTypeInfo(o),this.typeNumber>=7&&this.setupTypeNumber(o),this.mapData(this.createData(this.typeNumber,this.errorCorrectLevel),this.errorCorrectLevel)},setupPositionProbePattern:function(o,t){for(var e=-1;e<=7;e++)if(!(o+e<=-1||this.moduleCount<=o+e))for(var n=-1;n<=7;n++)t+n<=-1||this.moduleCount<=t+n||(this.modules[o+e][t+n]=e>=0&&e<=6&&(0==n||6==n)||n>=0&&n<=6&&(0==e||6==e)||e>=2&&e<=4&&n>=2&&n<=4)},getBestMaskPattern:function(){for(var o=0,t=0,e=0;e<8;e++){this.makeImpl(!0,e);var n=C(this);(0==e||n<t)&&(t=n,o=e)}return o},createData:function(o,t){for(var n=s.getRSBlocks(o,t),r=new p,i=0;i<this.dataList.length;i++){var a=this.dataList[i];r.put(4,4),r.put(a.getLength(),8);for(var c=0;c<a.data.length;c++)r.put(a.data.charCodeAt(c),8)}for(var u=0,d=0;d<n.length;d++)u+=n[d].dataCount;for(;r.length/8>u;)throw new Error("code length overflow. ("+r.length/8+">"+u+")");for(r.length/8<u&&(r.put(0,4),r.put(0,4));r.length%8!=0;)r.putBit(!1);for(;r.length/8<u;)r.put(c.PAD0,8),r.put(c.PAD1,8);return S(r,n)},setupPositionAdjustPattern:function(){for(var o=M(this.typeNumber),t=0;t<o.length;t++)for(var e=0;e<o.length;e++){var n=o[t],r=o[e];if(null==this.modules[n][r])for(var i=-2;i<=2;i++)for(var a=-2;a<=2;a++)this.modules[n+i][r+a]=-2==i||2==i||-2==a||2==a||0==i&&0==a}},setupTimingPattern:function(){for(var o=8;o<this.moduleCount-8;o++)null==this.modules[o][6]&&(this.modules[o][6]=o%2==0),null==this.modules[6][o]&&(this.modules[6][o]=o%2==0)},setupTypeNumber:function(o){for(var t=m(this.typeNumber),e=0;e<18;e++){var n=!o&&1==(t>>e&1);this.modules[Math.floor(e/3)][e%3+this.moduleCount-8-3]=n}for(e=0;e<18;e++){n=!o&&1==(t>>e&1);this.modules[e%3+this.moduleCount-8-3][Math.floor(e/3)]=n}},setupTypeInfo:function(o){for(var t=c.ErrorCorrectLevel[this.errorCorrectLevel],e=y(t<<3|0),n=0;n<15;n++){var r=!o&&1==(e>>n&1);n<6?this.modules[n][8]=r:n<8?this.modules[n+1][8]=r:this.modules[this.moduleCount-15+n][8]=r}for(n=0;n<15;n++){r=!o&&1==(e>>n&1);n<8?this.modules[8][this.moduleCount-1-n]=r:n<9?this.modules[8][15-n-1]=r:this.modules[8][14-n]=r}this.modules[this.moduleCount-8][8]=!o},mapData:function(o,t){for(var e=0,n=0,r=0,i=this.moduleCount-1;i>0;i-=2){6==i&&i--;for(var a=0;a<this.moduleCount;a++){var c=1==((i+1)%4)?this.moduleCount-1-a:a;for(var s=0;s<2;s++)null==this.modules[i-s][c]&&(n<o.length&&(r=1==(o[n]>>>7-e&1)),this.modules[i-s][c]=r,e++,8==e&&(n++,e=0))}}}};
+var S=function(o,t){for(var e=0,n=0,r=0,i=[],a=0;a<t.length;a++)e=Math.max(e,t[a].dataCount),n=Math.max(n,t[a].totalCount-t[a].dataCount);for(r=0;r<e;r++)for(a=0;a<t.length;a++)r<t[a].dataCount&&i.push(o.buffer[r]);for(r=0;r<n;r++)for(a=0;a<t.length;a++)r<t[a].totalCount-t[a].dataCount&&i.push(0);return i};
+window.QRCode=e;window.QRErrorCorrectLevel=c.ErrorCorrectLevel;
+  </script>
+
+  <!-- 앱 스크립트: 정식 API로 QR 생성 -->
+  <script>
+    function isHexColor(str) {
+      return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(str);
+    }
+
+    const els = {
+      text: document.getElementById('text'),
+      ecc: document.getElementById('ecc'),
+      size: document.getElementById('size'),
+      sizeValue: document.getElementById('sizeValue'),
+      margin: document.getElementById('margin'),
+      marginValue: document.getElementById('marginValue'),
+      fg: document.getElementById('fg'),
+      bg: document.getElementById('bg'),
+      qrcode: document.getElementById('qrcode'),
+      errorBox: document.getElementById('errorBox'),
+      generate: document.getElementById('generate'),
+      clear: document.getElementById('clear'),
+      sample: document.getElementById('sample'),
+      downloadPng: document.getElementById('downloadPng'),
+      toggleAuto: document.getElementById('toggleAuto'),
+      autoState: document.getElementById('autoState'),
+    };
+
+    let qrInstance = null;
+    let auto = true;
+
+    function showError(msg) {
+      els.errorBox.textContent = msg;
+      els.errorBox.style.display = 'block';
+    }
+    function hideError() { els.errorBox.style.display = 'none'; }
+
+    function getOptions() {
+      const text = (els.text.value || '').trim();
+      const size = parseInt(els.size.value, 10) || 256;
+      const margin = parseInt(els.margin.value, 10) || 2;
+      const ecc = els.ecc.value || 'M';
+      const colorDark = els.fg.value;
+      const colorLight = els.bg.value;
+
+      if (!text) throw new Error('입력값이 비어 있습니다. 텍스트나 URL을 입력해 주세요.');
+      if (!isHexColor(colorDark) || !isHexColor(colorLight)) {
+        throw new Error('색상 값이 유효한 HEX 형식이 아닙니다.');
+      }
+
+      return { text, size, margin, ecc, colorDark, colorLight };
+    }
+
+    function clearQRCode() {
+      els.qrcode.innerHTML = '';
+      qrInstance = null;
+    }
+
+    // 라이브러리의 정상 API 사용: new QRCode(domEl, options)
+    function generateQRCode() {
+      try {
+        hideError();
+        const { text, size, margin, ecc, colorDark, colorLight } = getOptions();
+
+        // 이전 인스턴스 제거 후 재생성
+        clearQRCode();
+        qrInstance = new QRCode(els.qrcode, {
+          text,
+          width: size,
+          height: size,
+          colorDark,
+          colorLight,
+          correctLevel: QRErrorCorrectLevel[ecc] || QRErrorCorrectLevel.M
+        });
+
+        // 여백(margin) 적용: Canvas가 생성된 뒤 padding으로 구현
+        els.qrcode.style.padding = `${margin}px`;
+        els.qrcode.style.background = colorLight;
+
+      } catch (err) {
+        showError(err.message || '생성 중 오류가 발생했습니다.');
+      }
+    }
+
+    // 생성된 Canvas를 PNG로 저장
+    function downloadPNG() {
+      const canvas = els.qrcode.querySelector('canvas');
+      const img = els.qrcode.querySelector('img');
+      let dataUrl = null;
+
+      if (canvas) {
+        dataUrl = canvas.toDataURL('image/png');
+      } else if (img && img.src) {
+        dataUrl = img.src; // 일부 브라우저에서는 IMG로 렌더됨
+      }
+
+      if (!dataUrl) {
+        showError('먼저 QR 코드를 생성해 주세요.');
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.download = 'qrcode.png';
+      link.href = dataUrl;
+      link.click();
+    }
+
+    // UI 이벤트
+    els.size.addEventListener('input', () => {
+      els.sizeValue.textContent = els.size.value;
+      if (auto) generateQRCode();
+    });
+    els.margin.addEventListener('input', () => {
+      els.marginValue.textContent = els.margin.value;
+      if (auto) generateQRCode();
+    });
+
+    ['input','change'].forEach(evt => {
+      els.text.addEventListener(evt, () => auto && generateQRCode());
+      els.ecc.addEventListener(evt, () => auto && generateQRCode());
+      els.fg.addEventListener(evt, () => auto && generateQRCode());
+      els.bg.addEventListener(evt, () => auto && generateQRCode());
+    });
+
+    els.generate.addEventListener('click', generateQRCode);
+    els.downloadPng.addEventListener('click', downloadPNG);
+
+    els.clear.addEventListener('click', () => {
+      hideError();
+      els.text.value = '';
+      clearQRCode();
+    });
+    els.sample.addEventListener('click', () => {
+      els.text.value = 'https://example.com/?ref=qr';
+      generateQRCode();
+    });
+
+    els.toggleAuto.addEventListener('click', () => {
+      auto = !auto;
+      els.autoState.textContent = auto ? 'ON' : 'OFF';
+    });
+
+    // 초기 라벨
+    els.sizeValue.textContent = els.size.value;
+    els.marginValue.textContent = els.margin.value;
+  </script>
+</body>
+</html>
+``
